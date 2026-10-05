@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Randomizador de Squads</title>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --text: #1c1f26;
+    --muted: #6b7280;
+    --border: #d9dde3;
+    --accent: #4f46e5;
+    --accent-text: #ffffff;
+    --danger: #b91c1c;
+    --captain: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115;
+      --surface: #181b22;
+      --text: #e6e8ec;
+      --muted: #9aa3b2;
+      --border: #2a2f3a;
+      --accent: #818cf8;
+      --accent-text: #0f1115;
+      --danger: #f87171;
+      --captain: #fbbf24;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1115;
+    --surface: #181b22;
+    --text: #e6e8ec;
+    --muted: #9aa3b2;
+    --border: #2a2f3a;
+    --accent: #818cf8;
+    --accent-text: #0f1115;
+    --danger: #f87171;
+    --captain: #fbbf24;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  h2 { font-size: 1.05rem; margin: 0 0 8px; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .grid-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  label.field { display: block; font-size: .9rem; color: var(--muted); margin-bottom: 4px; }
+  textarea, input[type="text"] {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  textarea { min-height: 220px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+  .counter { font-size: .85rem; color: var(--muted); margin-top: 4px; }
+  .counter.bad { color: var(--danger); }
+
+  .mascots { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  button {
+    font: inherit;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; font-weight: 600; }
+  button:hover { filter: brightness(1.05); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .error {
+    color: var(--danger);
+    border: 1px solid var(--danger);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 12px 0;
+    display: none;
+  }
+  .error.show { display: block; }
+
+  .summary { font-size: .9rem; color: var(--muted); margin: 12px 0; }
+  .squads {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+  }
+  .squad {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .squad-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .squad-num { font-weight: 700; }
+  .mascot { font-size: .8rem; font-weight: 600; color: var(--accent); }
+  .captain { color: var(--captain); font-weight: 600; font-size: .95rem; }
+  .label { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 4px; }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { font-size: .92rem; padding: 2px 0; overflow-wrap: anywhere; }
+  li.bench { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Randomizador de Squads</h1>
+  <p class="sub">100 jugadores → 25 squads de 3 titulares + 1 banca, con capitán y mascota asignados al azar.</p>
+
+  <section class="panel">
+    <div class="grid-inputs">
+      <div>
+        <label class="field" for="players">Pool de jugadores (uno por línea, se necesitan 100)</label>
+        <textarea id="players" spellcheck="false"></textarea>
+        <div class="counter" id="playersCount"></div>
+      </div>
+      <div>
+        <label class="field" for="captains">Pool de capitanes (uno por línea, mínimo 25)</label>
+        <textarea id="captains" spellcheck="false"></textarea>
+        <div class="counter" id="captainsCount"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="fillExample" type="button">Cargar ejemplo</button>
+      <button id="clearAll" type="button">Limpiar</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Mascotas (5, se reparten 5 squads cada una)</h2>
+    <div class="mascots">
+      <input type="text" class="mascot-input" value="Lobo">
+      <input type="text" class="mascot-input" value="Águila">
+      <input type="text" class="mascot-input" value="Tigre">
+      <input type="text" class="mascot-input" value="Oso">
+      <input type="text" class="mascot-input" value="Dragón">
+    </div>
+  </section>
+
+  <div class="actions">
+    <button id="randomize" class="primary" type="button">Randomizar squads</button>
+    <button id="copy" type="button" disabled>Copiar resultado</button>
+  </div>
+
+  <div class="error" id="error" role="alert"></div>
+  <div class="summary" id="summary"></div>
+  <div class="squads" id="squads"></div>
+</main>
+
+<script>
+(() => {
+  const SQUADS = 25;
+  const MAIN_PER_SQUAD = 3;
+  const BENCH_PER_SQUAD = 1;
+  const PLAYERS_NEEDED = SQUADS * (MAIN_PER_SQUAD + BENCH_PER_SQUAD); // 100
+  const MASCOT_COUNT = 5;
+
+  const $ = (id) => document.getElementById(id);
+  const playersEl = $("players");
+  const captainsEl = $("captains");
+  const errorEl = $("error");
+  const squadsEl = $("squads");
+  const summaryEl = $("summary");
+  const copyBtn = $("copy");
+  let lastResult = null;
+
+  const parseList = (text) =>
+    text.split("\n").map((s) => s.trim()).filter(Boolean);
+
+  // Fisher-Yates: copia sin mutar el original
+  const shuffle = (arr) => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const showError = (msg) => {
+    errorEl.textContent = msg;
+    errorEl.classList.add("show");
+  };
+  const clearError = () => errorEl.classList.remove("show");
+
+  const updateCounters = () => {
+    const p = parseList(playersEl.value).length;
+    const c = parseList(captainsEl.value).length;
+    const pEl = $("playersCount");
+    const cEl = $("captainsCount");
+    pEl.textContent = `${p} / ${PLAYERS_NEEDED} jugadores`;
+    pEl.classList.toggle("bad", p !== PLAYERS_NEEDED);
+    cEl.textContent = `${c} capitanes (mínimo ${SQUADS})`;
+    cEl.classList.toggle("bad", c < SQUADS);
+  };
+
+  const getMascots = () => {
+    const names = [...document.querySelectorAll(".mascot-input")]
+      .map((i) => i.value.trim())
+      .filter(Boolean);
+    return names;
+  };
+
+  const randomize = () => {
+    clearError();
+    const players = parseList(playersEl.value);
+    const captains = parseList(captainsEl.value);
+    const mascots = getMascots();
+
+    if (players.length !== PLAYERS_NEEDED) {
+      return showError(`Necesitas exactamente ${PLAYERS_NEEDED} jugadores (tienes ${players.length}).`);
+    }
+    if (captains.length < SQUADS) {
+      return showError(`Necesitas al menos ${SQUADS} capitanes (tienes ${captains.length}).`);
+    }
+    if (mascots.length !== MASCOT_COUNT) {
+      return showError(`Necesitas ${MASCOT_COUNT} mascotas (tienes ${mascots.length}).`);
+    }
+    if (new Set(players.map((p) => p.toLowerCase())).size !== players.length) {
+      return showError("Hay jugadores repetidos en el pool.");
+    }
+
+    const shuffledPlayers = shuffle(players);
+    const shuffledCaptains = shuffle(captains).slice(0, SQUADS);
+
+    // Reparto equitativo de mascotas: 25 / 5 = 5 squads por mascota, en orden aleatorio
+    const perMascot = SQUADS / MASCOT_COUNT;
+    const mascotPool = [];
+    mascots.forEach((m) => {
+      for (let k = 0; k < perMascot; k++) mascotPool.push(m);
+    });
+    const shuffledMascots = shuffle(mascotPool);
+
+    const squads = [];
+    for (let i = 0; i < SQUADS; i++) {
+      const base = i * (MAIN_PER_SQUAD + BENCH_PER_SQUAD);
+      squads.push({
+        number: i + 1,
+        mascot: shuffledMascots[i],
+        captain: shuffledCaptains[i],
+        main: shuffledPlayers.slice(base, base + MAIN_PER_SQUAD),
+        bench: shuffledPlayers[base + MAIN_PER_SQUAD],
+      });
+    }
+
+    lastResult = squads;
+    render(squads, mascots);
+  };
+
+  const render = (squads, mascots) => {
+    squadsEl.innerHTML = "";
+    squads.forEach((s) => {
+      const card = document.createElement("article");
+      card.className = "squad";
+      card.innerHTML = `
+        <div class="squad-head">
+          <span class="squad-num">Squad ${s.number}</span>
+          <span class="mascot"></span>
+        </div>
+        <div class="captain"></div>
+        <div class="label">Titulares</div>
+        <ul class="main"></ul>
+        <div class="label">Banca</div>
+        <ul><li class="bench"></li></ul>
+      `;
+      card.querySelector(".mascot").textContent = s.mascot;
+      card.querySelector(".captain").textContent = `★ ${s.captain}`;
+      const ul = card.querySelector(".main");
+      s.main.forEach((name) => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        ul.appendChild(li);
+      });
+      card.querySelector(".bench").textContent = s.bench;
+      squadsEl.appendChild(card);
+    });
+
+    const counts = {};
+    mascots.forEach((m) => (counts[m] = 0));
+    squads.forEach((s) => (counts[s.mascot] += 1));
+    summaryEl.textContent =
+      `${squads.length} squads generados · ` +
+      mascots.map((m) => `${m}: ${counts[m]}`).join(" · ");
+    copyBtn.disabled = false;
+  };
+
+  const toText = (squads) =>
+    squads
+      .map((s) =>
+        [
+          `Squad ${s.number} - ${s.mascot}`,
+          `  Capitán: ${s.captain}`,
+          `  Titulares: ${s.main.join(", ")}`,
+          `  Banca: ${s.bench}`,
+        ].join("\n")
+      )
+      .join("\n\n");
+
+  const EXAMPLE_PLAYERS = Array.from({ length: PLAYERS_NEEDED }, (_, i) => `Jugador ${i + 1}`);
+  const EXAMPLE_CAPTAINS = Array.from({ length: 30 }, (_, i) => `Capitán ${i + 1}`);
+
+  $("fillExample").addEventListener("click", () => {
+    playersEl.value = EXAMPLE_PLAYERS.join("\n");
+    captainsEl.value = EXAMPLE_CAPTAINS.join("\n");
+    updateCounters();
+  });
+  $("clearAll").addEventListener("click", () => {
+    playersEl.value = "";
+    captainsEl.value = "";
+    updateCounters();
+  });
+  playersEl.addEventListener("input", updateCounters);
+  captainsEl.addEventListener("input", updateCounters);
+  $("randomize").addEventListener("click", randomize);
+  copyBtn.addEventListener("click", async () => {
+    if (!lastResult) return;
+    try {
+      await navigator.clipboard.writeText(toText(lastResult));
+      copyBtn.textContent = "¡Copiado!";
+      setTimeout(() => (copyBtn.textContent = "Copiar resultado"), 1500);
+    } catch {
+      showError("No se pudo copiar al portapapeles.");
+    }
+  });
+
+  updateCounters();
+})();
+</script>
+</body>
+</html>
